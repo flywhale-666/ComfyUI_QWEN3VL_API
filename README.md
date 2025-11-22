@@ -4,7 +4,7 @@
 
 ## 🖼️ 工作流示例
 
-![workflow](.github/workflow.png)
+![示例](1.png)
 
 ## ✨ 功能特性
 
