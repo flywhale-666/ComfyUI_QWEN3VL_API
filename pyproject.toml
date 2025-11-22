@@ -2,11 +2,8 @@
 name = "comfyui-qwen3vl-api"
 description = "ComfyUI custom nodes for Qwen3-VL multimodal AI model API integration. Support image and video understanding with batch processing capabilities."
 version = "1.0.0"
-license = { file = "LICENSE" }
-dynamic = ["dependencies"]
-
-[tool.setuptools.dynamic]
-dependencies = {file = ["requirements.txt"]}
+license = { text = "MIT License" }
+dependencies = ["openai"]
 
 [project.urls]
 Repository = "https://github.com/flywhale-666/ComfyUI_QWEN3VL_API"
