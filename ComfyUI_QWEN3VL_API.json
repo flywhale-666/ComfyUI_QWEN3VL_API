@@ -1,0 +1,71 @@
+{
+    "QWEN3VL_Image": {
+        "title": "QWEN3-VL 图像理解",
+        "inputs": {
+            "image": "图像"
+        },
+        "widgets": {
+            "model": "模型",
+            "user_prompt": "提示词",
+            "seed": "随机种子"
+        },
+        "outputs": {
+            "text": "文本"
+        }
+    },
+    "QWEN3VL_Video": {
+        "title": "QWEN3-VL 视频理解",
+        "inputs": {
+            "video": "视频"
+        },
+        "widgets": {
+            "video_path": "视频路径",
+            "model": "模型",
+            "user_prompt": "提示词",
+            "seed": "随机种子"
+        },
+        "outputs": {
+            "text": "文本"
+        }
+    },
+    "LoadImageFromFolder": {
+        "title": "QWEN3-VL 加载图像(文件夹)",
+        "widgets": {
+            "folder_path": "文件夹路径",
+            "image_limit": "图像加载上限",
+            "start_index": "起始索引",
+            "sort_method": "排序方法",
+            "sort_method:None": "无",
+            "sort_method:Alphabetical (ASC)": "字母顺序(升序)",
+            "sort_method:Alphabetical (DESC)": "字母顺序(降序)",
+            "sort_method:Numerical (ASC)": "数字顺序(升序)",
+            "sort_method:Numerical (DESC)": "数字顺序(降序)",
+            "sort_method:Datetime (ASC)": "修改时间(升序)",
+            "sort_method:Datetime (DESC)": "修改时间(降序)"
+        },
+        "outputs": {
+            "images": "图像",
+            "file_paths": "文件路径"
+        }
+    },
+    "LoadVideoFromFolder": {
+        "title": "QWEN3-VL 加载视频(文件夹)",
+        "widgets": {
+            "folder_path": "文件夹路径",
+            "video_limit": "视频加载上限",
+            "start_index": "起始索引",
+            "sort_method": "排序方法",
+            "sort_method:None": "无",
+            "sort_method:Alphabetical (ASC)": "字母顺序(升序)",
+            "sort_method:Alphabetical (DESC)": "字母顺序(降序)",
+            "sort_method:Numerical (ASC)": "数字顺序(升序)",
+            "sort_method:Numerical (DESC)": "数字顺序(降序)",
+            "sort_method:Datetime (ASC)": "修改时间(升序)",
+            "sort_method:Datetime (DESC)": "修改时间(降序)"
+        },
+        "outputs": {
+            "videos": "视频",
+            "file_paths": "文件路径"
+        }
+    }
+}
