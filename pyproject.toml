@@ -1,6 +1,6 @@
 [project]
 name = "qwen3vl_api"
-description = ""
+description = "qwen3vl API Supports batch image or video reverse inference."
 version = "1.0.0"
 license = {file = "LICENSE"} 
 # classifiers = [
