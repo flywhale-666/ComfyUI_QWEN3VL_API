@@ -41,7 +41,7 @@ pip install -r requirements.txt
 
 ## 🔑 配置 API Key
 
-1. 前往 [阿里云 DashScope](https://dashscope.aliyuncs.com/) 获取 API Key
+1. 前往 [阿里云](https://bailian.console.aliyun.com/?tab=model#/api-key) 获取 API Key
 
 2. 在插件目录下创建或编辑 `api_key.ini` 文件：
 
