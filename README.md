@@ -29,7 +29,7 @@
 
 ```bash
 cd ComfyUI/custom_nodes
-git clone https://github.com/your-username/ComfyUI_QWEN3VL_API.git
+git clone https://github.com/flywhale-666/ComfyUI_QWEN3VL_API
 ```
 
 2. 安装依赖：
