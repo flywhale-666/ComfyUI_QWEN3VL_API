@@ -10,6 +10,7 @@
 
 - 🖼️ **图像理解**：使用 Qwen3-VL 模型分析图像内容
 - 🎬 **视频理解**：使用 Qwen3-VL 模型分析视频内容
+- 💬 **文本对话生成**：使用 Qwen3/Qwen-Plus/Qwen-Flash 进行多轮对话
 - 📁 **批量加载图像**：从文件夹批量加载图像文件
 - 📂 **批量加载视频**：从文件夹批量加载视频文件
 - 🔀 **多种排序方式**：支持字母、数字、时间等多种排序方式
@@ -51,7 +52,28 @@ DASHSCOPE_API_KEY=你的API密钥
 
 ## 🎯 节点说明
 
-### 1. QWEN3-VL 图像理解
+### 1. QWEN3 文本对话生成
+
+支持多轮对话的文本生成节点。
+
+**输入**：
+- `model`：模型选择（qwen3-max / qwen-plus / qwen-flash）
+- `user_prompt`：用户输入的问题或指令
+- `system_prompt`：系统提示词，定义AI的角色和行为
+- `temperature`：温度参数（0.0-2.0），控制回答的创造性
+- `top_p`：核采样参数（0.0-1.0），控制回答的随机性
+- `seed`：随机种子，控制输出的一致性
+- `conversation_history`：对话历史（可选，JSON格式）
+
+**输出**：
+- `response`：AI的回复内容
+- `conversation_history`：更新后的对话历史（可循环连接实现多轮对话）
+
+**使用提示**：
+- 单次对话：直接使用，不连接 `conversation_history` 输入
+- 多轮对话：将 `conversation_history` 输出连接回自己的输入端，实现连续对话
+
+### 2. QWEN3-VL 图像理解
 
 分析单张图像内容。
 
@@ -64,7 +86,7 @@ DASHSCOPE_API_KEY=你的API密钥
 **输出**：
 - `text`：模型分析结果（文本）
 
-### 2. QWEN3-VL 视频理解
+### 3. QWEN3-VL 视频理解
 
 分析视频内容。
 
@@ -78,7 +100,7 @@ DASHSCOPE_API_KEY=你的API密钥
 **输出**：
 - `text`：模型分析结果（文本）
 
-### 3. QWEN3-VL 加载图像(文件夹)
+### 4. QWEN3-VL 加载图像(文件夹)
 
 从指定文件夹批量加载图像文件。
 
@@ -98,7 +120,7 @@ DASHSCOPE_API_KEY=你的API密钥
 
 **支持格式**：jpg, jpeg, png, bmp, gif, webp, tiff, tif
 
-### 4. QWEN3-VL 加载视频(文件夹)
+### 5. QWEN3-VL 加载视频(文件夹)
 
 从指定文件夹批量加载视频文件。
 
@@ -116,13 +138,21 @@ DASHSCOPE_API_KEY=你的API密钥
 
 ## 💡 使用示例
 
-### 示例 1：批量图像分析
+### 示例 1：多轮文本对话
+
+1. 添加 `QWEN3 文本对话生成` 节点
+2. 设置 `system_prompt`（如："你是一个专业的写作助手"）
+3. 输入第一个问题到 `user_prompt`
+4. 将 `conversation_history` 输出连接回输入，实现连续对话
+5. 每次修改 `user_prompt` 后执行，保持对话上下文
+
+### 示例 2：批量图像分析
 
 1. 使用 `QWEN3-VL 加载图像(文件夹)` 节点加载图像
 2. 连接到 `QWEN3-VL 图像理解` 节点进行分析
 3. 输出分析结果
 
-### 示例 2：视频内容理解
+### 示例 3：视频内容理解
 
 1. 使用 `QWEN3-VL 加载视频(文件夹)` 节点加载视频
 2. 连接到 `QWEN3-VL 视频理解` 节点进行分析
@@ -141,11 +171,17 @@ cp ComfyUI_QWEN3VL_API.json ../ComfyUI-DD-Translation/zh-CN/Nodes/
 
 ## 📝 可用模型
 
+### 视觉理解模型
 - `qwen3-vl-flash`：快速模型，适合实时应用
 - `qwen3-vl-flash-2025-10-15`：指定版本的快速模型
 - `qwen3-vl-plus`：增强模型，更强的理解能力
 - `qwen3-vl-plus-2025-09-23`：指定版本的增强模型
 - `qwen-vl-max`：最强模型，最佳效果
+
+### 文本对话模型
+- `qwen3-max`：最强性能，适合复杂任务
+- `qwen-plus`：平衡性能，适合通用场景
+- `qwen-flash`：快速响应，适合简单对话
 
 ## ⚠️ 注意事项
 

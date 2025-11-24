@@ -315,7 +315,7 @@ class LoadImageFromFolder:
 
 
 class QWEN3_Text:
-    """QWEN3 文本生成节点"""
+    """QWEN3 文本对话生成节点"""
     
     def __init__(self):
         self.NODE_NAME = 'QWEN3_Text'
@@ -331,7 +331,7 @@ class QWEN3_Text:
             "required": {
                 "model": (model_list,),
                 "user_prompt": ("STRING", {
-                    "default": "你好，请介绍一下你自己", 
+                    "default": "你好,请介绍一下你自己", 
                     "multiline": True
                 }),
                 "system_prompt": ("STRING", {
@@ -356,21 +356,28 @@ class QWEN3_Text:
                     "max": 0xffffffffffffffff
                 }),
             },
+            "optional": {
+                "conversation_history": ("STRING", {
+                    "default": "",
+                    "multiline": True
+                }),
+            },
         }
     
-    RETURN_TYPES = ("STRING",)
-    RETURN_NAMES = ("text",)
+    RETURN_TYPES = ("STRING", "STRING")
+    RETURN_NAMES = ("response", "conversation_history")
     FUNCTION = "qwen3_text"
     CATEGORY = '🤖QWEN3VL_API'
     
     @classmethod
-    def IS_CHANGED(cls, model, user_prompt, system_prompt, temperature, top_p, seed):
+    def IS_CHANGED(cls, model, user_prompt, system_prompt, temperature, top_p, seed, conversation_history=""):
         """返回 seed，seed 变化则重新执行"""
         return seed
     
-    def qwen3_text(self, model, user_prompt, system_prompt, temperature, top_p, seed):
-        """调用 QWEN3 API 进行文本生成"""
+    def qwen3_text(self, model, user_prompt, system_prompt, temperature, top_p, seed, conversation_history=""):
+        """调用 QWEN3 API 进行文本对话生成"""
         from openai import OpenAI
+        import json
         
         # 处理 seed
         try:
@@ -383,12 +390,12 @@ class QWEN3_Text:
             log(f"警告: seed 类型转换失败 {e}，使用默认值 0", message_type='warning')
             seed = 0
         
-        log(f"文本生成 seed: {seed}, 类型: {type(seed)}")
+        log(f"文本对话生成 seed: {seed}, 类型: {type(seed)}")
         
         # 获取 API Key
         api_key = get_api_key()
         if not api_key:
-            return ("❌ 未配置 API Key，请检查 api_key.ini 文件",)
+            return ("❌ 未配置 API Key，请检查 api_key.ini 文件", "")
         
         # 初始化客户端
         client = OpenAI(
@@ -396,11 +403,21 @@ class QWEN3_Text:
             base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
         )
         
-        # 构建消息
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ]
+        # 构建消息列表
+        messages = [{"role": "system", "content": system_prompt}]
+        
+        # 解析对话历史
+        if conversation_history and conversation_history.strip():
+            try:
+                history = json.loads(conversation_history)
+                if isinstance(history, list):
+                    messages.extend(history)
+                    log(f"加载了 {len(history)} 条历史对话")
+            except json.JSONDecodeError:
+                log("警告: 对话历史解析失败，将忽略历史记录", message_type='warning')
+        
+        # 添加当前用户消息
+        messages.append({"role": "user", "content": user_prompt})
         
         try:
             # 调用 API
@@ -415,12 +432,17 @@ class QWEN3_Text:
             ret_message = response.choices[0].message.content
             log(f"{self.NODE_NAME} 响应 (model={model}, seed={seed}): {ret_message[:100]}...")
             
-            return (ret_message,)
+            # 更新对话历史（不包括 system）
+            history_list = messages[1:]  # 跳过 system 消息
+            history_list.append({"role": "assistant", "content": ret_message})
+            new_history = json.dumps(history_list, ensure_ascii=False, indent=2)
+            
+            return (ret_message, new_history)
             
         except Exception as e:
             error_msg = f"❌ API 调用失败: {repr(e)}"
             log(error_msg, message_type='error')
-            return (error_msg,)
+            return (error_msg, conversation_history)
 
 
 class LoadVideoFromFolder:
