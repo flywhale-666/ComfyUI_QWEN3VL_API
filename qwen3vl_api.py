@@ -314,6 +314,115 @@ class LoadImageFromFolder:
         return (images, file_paths)
 
 
+class QWEN3_Text:
+    """QWEN3 文本生成节点"""
+    
+    def __init__(self):
+        self.NODE_NAME = 'QWEN3_Text'
+    
+    @classmethod
+    def INPUT_TYPES(cls):
+        model_list = [
+            "qwen3-max",
+            "qwen-plus",
+            "qwen-flash",
+        ]
+        return {
+            "required": {
+                "model": (model_list,),
+                "user_prompt": ("STRING", {
+                    "default": "你好，请介绍一下你自己", 
+                    "multiline": True
+                }),
+                "system_prompt": ("STRING", {
+                    "default": "You are a helpful assistant.", 
+                    "multiline": True
+                }),
+                "temperature": ("FLOAT", {
+                    "default": 0.7,
+                    "min": 0.0,
+                    "max": 2.0,
+                    "step": 0.1
+                }),
+                "top_p": ("FLOAT", {
+                    "default": 0.8,
+                    "min": 0.0,
+                    "max": 1.0,
+                    "step": 0.05
+                }),
+                "seed": ("INT", {
+                    "default": 0,
+                    "min": 0,
+                    "max": 0xffffffffffffffff
+                }),
+            },
+        }
+    
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("text",)
+    FUNCTION = "qwen3_text"
+    CATEGORY = '🤖QWEN3VL_API'
+    
+    @classmethod
+    def IS_CHANGED(cls, model, user_prompt, system_prompt, temperature, top_p, seed):
+        """返回 seed，seed 变化则重新执行"""
+        return seed
+    
+    def qwen3_text(self, model, user_prompt, system_prompt, temperature, top_p, seed):
+        """调用 QWEN3 API 进行文本生成"""
+        from openai import OpenAI
+        
+        # 处理 seed
+        try:
+            seed = int(float(seed))
+            if seed > 2147483647:
+                seed = seed % 2147483647
+            elif seed < 0:
+                seed = abs(seed) % 2147483647
+        except (ValueError, TypeError) as e:
+            log(f"警告: seed 类型转换失败 {e}，使用默认值 0", message_type='warning')
+            seed = 0
+        
+        log(f"文本生成 seed: {seed}, 类型: {type(seed)}")
+        
+        # 获取 API Key
+        api_key = get_api_key()
+        if not api_key:
+            return ("❌ 未配置 API Key，请检查 api_key.ini 文件",)
+        
+        # 初始化客户端
+        client = OpenAI(
+            api_key=api_key,
+            base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+        )
+        
+        # 构建消息
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ]
+        
+        try:
+            # 调用 API
+            response = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                top_p=top_p,
+                seed=seed
+            )
+            
+            ret_message = response.choices[0].message.content
+            log(f"{self.NODE_NAME} 响应 (model={model}, seed={seed}): {ret_message[:100]}...")
+            
+            return (ret_message,)
+            
+        except Exception as e:
+            error_msg = f"❌ API 调用失败: {repr(e)}"
+            log(error_msg, message_type='error')
+            return (error_msg,)
+
+
 class LoadVideoFromFolder:
     """从文件夹加载视频节点"""
     
@@ -618,6 +727,7 @@ class QWEN3VL_Video:
 NODE_CLASS_MAPPINGS = {
     "QWEN3VL_Image": QWEN3VL_Image,
     "QWEN3VL_Video": QWEN3VL_Video,
+    "QWEN3_Text": QWEN3_Text,
     "LoadImageFromFolder": LoadImageFromFolder,
     "LoadVideoFromFolder": LoadVideoFromFolder,
 }
@@ -625,6 +735,7 @@ NODE_CLASS_MAPPINGS = {
 NODE_DISPLAY_NAME_MAPPINGS = {
     "QWEN3VL_Image": "QWEN3-VL 图像理解",
     "QWEN3VL_Video": "QWEN3-VL 视频理解",
+    "QWEN3_Text": "QWEN3 文本生成",
     "LoadImageFromFolder": "QWEN3-VL 加载图像(文件夹)",
     "LoadVideoFromFolder": "QWEN3-VL 加载视频(文件夹)",
 }
