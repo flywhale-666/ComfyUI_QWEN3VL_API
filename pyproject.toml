@@ -1,5 +1,5 @@
 [project]
-name = "comfyui_qwen3vl_api"
+name = "qwen3vl_api"
 description = "qwen3vl API Supports batch image or video reverse inference."
 version = "1.0.7"
 license = {file = "LICENSE"} 
