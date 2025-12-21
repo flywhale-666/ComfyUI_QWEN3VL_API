@@ -34,8 +34,30 @@ def tensor2pil(t_image):
     )
 
 
-def get_api_key():
-    """从 api_key.ini 文件读取 API Key"""
+def get_api_key(node_api_key=''):
+    """获取 API Key，优先级：节点输入 > ini 文件
+    
+    Args:
+        node_api_key: 从节点输入的 API Key
+    
+    Returns:
+        str: API Key
+    """
+    # 优先使用节点输入的 API Key
+    if node_api_key and node_api_key.strip():
+        api_key = node_api_key.strip()
+        # 移除可能的引号
+        remove_chars = ['"', "'", '"', '"', ''', ''']
+        for char in remove_chars:
+            api_key = api_key.replace(char, '')
+        
+        if len(api_key) >= 10:
+            log('✓ 使用节点输入的 API Key')
+            return api_key
+        else:
+            log('⚠️ 节点输入的 API Key 无效，尝试从 ini 文件读取', message_type='warning')
+    
+    # 从 ini 文件读取 API Key
     api_key_file = os.path.join(
         os.path.dirname(os.path.normpath(__file__)), 
         "api_key.ini"
@@ -51,7 +73,7 @@ def get_api_key():
                     break
     except FileNotFoundError:
         log(f'❌ 配置文件不存在: {api_key_file}', message_type='error')
-        log(f'请创建 api_key.ini 文件并填写 DASHSCOPE_API_KEY', message_type='warning')
+        log(f'请创建 api_key.ini 文件或使用 API Key 节点输入', message_type='warning')
         return ''
     except Exception as e:
         log(f'❌ 读取配置文件失败: {repr(e)}', message_type='error')
@@ -63,10 +85,38 @@ def get_api_key():
         api_key = api_key.replace(char, '')
     
     if len(api_key) < 10:
-        log(f'❌ API Key 无效，请检查 {api_key_file}', message_type='error')
+        log(f'❌ API Key 无效，请检查 {api_key_file} 或使用 API Key 节点', message_type='error')
         return ''
     
+    log('✓ 使用 ini 文件中的 API Key')
     return api_key
+
+
+class QWEN_APIKey:
+    """QWEN API Key 配置节点"""
+    
+    def __init__(self):
+        self.NODE_NAME = 'QWEN_APIKey'
+    
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "api_key": ("STRING", {
+                    "default": "",
+                    "multiline": False
+                }),
+            },
+        }
+    
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("api_key",)
+    FUNCTION = "output_api_key"
+    CATEGORY = '🤖QWEN3VL_API'
+    
+    def output_api_key(self, api_key):
+        """输出 API Key"""
+        return (api_key,)
 
 
 class QWEN3VL_Image:
@@ -98,6 +148,12 @@ class QWEN3VL_Image:
                     "max": 0xffffffffffffffff
                 }),
             },
+            "optional": {
+                "api_key": ("STRING", {
+                    "default": "",
+                    "multiline": False
+                }),
+            },
         }
     
     RETURN_TYPES = ("STRING",)
@@ -106,13 +162,13 @@ class QWEN3VL_Image:
     CATEGORY = '🤖QWEN3VL_API'
     
     @classmethod
-    def IS_CHANGED(cls, image, model, user_prompt, seed):
+    def IS_CHANGED(cls, image, model, user_prompt, seed, api_key=""):
         """返回唯一值，只有当这些参数变化时才重新执行"""
         # 使用 seed 和其他参数来决定是否缓存
         # 返回 seed 即可，seed 变化则重新执行
         return seed
     
-    def qwen3vl_image(self, image, model, user_prompt, seed):
+    def qwen3vl_image(self, image, model, user_prompt, seed, api_key=""):
         """调用 QWEN3-VL API 进行图像理解"""
         from openai import OpenAI
         
@@ -134,14 +190,14 @@ class QWEN3VL_Image:
         
         log(f"转换后 seed: {seed}, 类型: {type(seed)}")
         
-        # 获取 API Key
-        api_key = get_api_key()
-        if not api_key:
-            return ("❌ 未配置 API Key，请检查 api_key.ini 文件",)
+        # 获取 API Key（优先使用节点输入）
+        final_api_key = get_api_key(api_key)
+        if not final_api_key:
+            return ("❌ 未配置 API Key，请通过节点输入或检查 api_key.ini 文件",)
         
         # 初始化客户端
         client = OpenAI(
-            api_key=api_key,
+            api_key=final_api_key,
             base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
         )
         
@@ -361,6 +417,10 @@ class QWEN3_Text:
                     "default": "",
                     "multiline": True
                 }),
+                "api_key": ("STRING", {
+                    "default": "",
+                    "multiline": False
+                }),
             },
         }
     
@@ -370,11 +430,11 @@ class QWEN3_Text:
     CATEGORY = '🤖QWEN3VL_API'
     
     @classmethod
-    def IS_CHANGED(cls, model, user_prompt, system_prompt, temperature, top_p, seed, conversation_history=""):
+    def IS_CHANGED(cls, model, user_prompt, system_prompt, temperature, top_p, seed, conversation_history="", api_key=""):
         """返回 seed，seed 变化则重新执行"""
         return seed
     
-    def qwen3_text(self, model, user_prompt, system_prompt, temperature, top_p, seed, conversation_history=""):
+    def qwen3_text(self, model, user_prompt, system_prompt, temperature, top_p, seed, conversation_history="", api_key=""):
         """调用 QWEN3 API 进行文本对话生成"""
         from openai import OpenAI
         import json
@@ -392,14 +452,14 @@ class QWEN3_Text:
         
         log(f"文本对话生成 seed: {seed}, 类型: {type(seed)}")
         
-        # 获取 API Key
-        api_key = get_api_key()
-        if not api_key:
-            return ("❌ 未配置 API Key，请检查 api_key.ini 文件", "")
+        # 获取 API Key（优先使用节点输入）
+        final_api_key = get_api_key(api_key)
+        if not final_api_key:
+            return ("❌ 未配置 API Key，请通过节点输入或检查 api_key.ini 文件", "")
         
         # 初始化客户端
         client = OpenAI(
-            api_key=api_key,
+            api_key=final_api_key,
             base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
         )
         
@@ -443,6 +503,207 @@ class QWEN3_Text:
             error_msg = f"❌ API 调用失败: {repr(e)}"
             log(error_msg, message_type='error')
             return (error_msg, conversation_history)
+
+
+class QWEN_TextProcess:
+    """文本处理节点（两个主操作）"""
+    
+    def __init__(self):
+        self.NODE_NAME = 'QWEN_TextProcess'
+    
+    @classmethod
+    def INPUT_TYPES(cls):
+        operation_list = ["不改变", "去换行", "去空行", "去空格", "添加编号", "统计字数"]
+        
+        return {
+            "required": {
+                "text": ("STRING", {
+                    "default": "",
+                    "multiline": True,
+                    "forceInput": True
+                }),
+                "main_operation_1": (operation_list,),
+                "main_operation_2": (operation_list,),
+            },
+        }
+    
+    RETURN_TYPES = ("STRING", "INT")
+    RETURN_NAMES = ("text", "count")
+    FUNCTION = "process_text"
+    CATEGORY = '🤖QWEN3VL_API'
+    
+    def process_text(self, text, main_operation_1, main_operation_2):
+        """执行文本处理"""
+        
+        result = text
+        count = 0
+        
+        # 执行第一个主操作
+        result, count1 = self._execute_operation(result, main_operation_1)
+        
+        # 执行第二个主操作
+        result, count2 = self._execute_operation(result, main_operation_2)
+        
+        # 优先使用有效的 count 值（后面的操作优先）
+        if count2 > 0:
+            count = count2
+        elif count1 > 0:
+            count = count1
+        else:
+            count = 0
+        
+        log(f"📋 处理完成 - 操作1: {main_operation_1}, 操作2: {main_operation_2}")
+        
+        return (result, count)
+    
+    def _execute_operation(self, text, operation):
+        """执行单个操作"""
+        result = text
+        count = 0
+        
+        if operation == "不改变":
+            log(f"• {operation}: 保持原文本")
+            
+        elif operation == "去换行":
+            result = result.replace("\n", "").replace("\r", "")
+            log(f"✓ {operation}: 已去除所有换行符")
+            
+        elif operation == "去空行":
+            lines = result.split("\n")
+            result = "\n".join([line for line in lines if line.strip()])
+            log(f"✓ {operation}: 已去除空行")
+            
+        elif operation == "去空格":
+            result = result.replace(" ", "").replace("\t", "")
+            log(f"✓ {operation}: 已去除所有空格和tab")
+            
+        elif operation == "添加编号":
+            lines = result.split("\n")
+            non_empty_lines = [line for line in lines if line.strip()]
+            numbered_lines = [f"{i+1}.{line}" for i, line in enumerate(non_empty_lines)]
+            result = "\n".join(numbered_lines)
+            count = len(non_empty_lines)
+            log(f"✓ {operation}: 已添加编号，共 {count} 个段落")
+            
+        elif operation == "统计字数":
+            count = len(result)
+            log(f"📊 {operation}: 字符总数 {count}")
+        
+        return result, count
+
+
+class QWEN_TextOperation:
+    """文本操作节点（5个操作槽位）"""
+    
+    def __init__(self):
+        self.NODE_NAME = 'QWEN_TextOperation'
+    
+    @classmethod
+    def INPUT_TYPES(cls):
+        operation_options = [
+            "无",
+            "添加前缀",
+            "每段添加前缀",
+            "添加后缀",
+            "删除开始内容",
+            "删除结束内容",
+            "删除指定内容",
+        ]
+        
+        return {
+            "required": {
+                "text": ("STRING", {
+                    "default": "",
+                    "multiline": True,
+                    "forceInput": True
+                }),
+            },
+            "optional": {
+                # 操作槽 1
+                "operation_1": (operation_options, {"default": "无"}),
+                "content_1": ("STRING", {"default": "", "multiline": False}),
+                
+                # 操作槽 2
+                "operation_2": (operation_options, {"default": "无"}),
+                "content_2": ("STRING", {"default": "", "multiline": False}),
+                
+                # 操作槽 3
+                "operation_3": (operation_options, {"default": "无"}),
+                "content_3": ("STRING", {"default": "", "multiline": False}),
+                
+                # 操作槽 4
+                "operation_4": (operation_options, {"default": "无"}),
+                "content_4": ("STRING", {"default": "", "multiline": False}),
+                
+                # 操作槽 5
+                "operation_5": (operation_options, {"default": "无"}),
+                "content_5": ("STRING", {"default": "", "multiline": False}),
+            },
+        }
+    
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("text",)
+    FUNCTION = "operate_text"
+    CATEGORY = '🤖QWEN3VL_API'
+    
+    def operate_text(self, text,
+                    operation_1="无", content_1="",
+                    operation_2="无", content_2="",
+                    operation_3="无", content_3="",
+                    operation_4="无", content_4="",
+                    operation_5="无", content_5=""):
+        """执行文本操作"""
+        
+        result = text
+        
+        # 执行所有操作槽
+        operations = [
+            (operation_1, content_1),
+            (operation_2, content_2),
+            (operation_3, content_3),
+            (operation_4, content_4),
+            (operation_5, content_5),
+        ]
+        
+        for op, content in operations:
+            if op == "无" or not content:
+                continue
+                
+            if op == "删除开始内容":
+                if content in result:
+                    idx = result.find(content)
+                    result = result[:idx] + result[idx + len(content):]
+                    log(f"✓ 已删除开始内容: {content}")
+                    
+            elif op == "删除结束内容":
+                if content in result:
+                    idx = result.rfind(content)
+                    result = result[:idx] + result[idx + len(content):]
+                    log(f"✓ 已删除结束内容: {content}")
+                    
+            elif op == "删除指定内容":
+                original_len = len(result)
+                result = result.replace(content, "")
+                removed_count = (original_len - len(result)) // len(content) if content else 0
+                if removed_count > 0:
+                    log(f"✓ 已删除 {removed_count} 次指定内容: {content}")
+                    
+            elif op == "添加前缀":
+                result = content + result
+                log(f"✓ 已添加前缀: {content}")
+                
+            elif op == "每段添加前缀":
+                lines = result.split("\n")
+                result = "\n".join([content + line if line.strip() else line for line in lines])
+                log(f"✓ 已为每段添加前缀: {content}")
+                
+            elif op == "添加后缀":
+                result = result + content
+                log(f"✓ 已添加后缀: {content}")
+        
+        log(f"📋 操作完成")
+        
+        return (result,)
 
 
 class LoadVideoFromFolder:
@@ -597,6 +858,10 @@ class QWEN3VL_Video:
             },
             "optional": {
                 "video": ("VIDEO",),
+                "api_key": ("STRING", {
+                    "default": "",
+                    "multiline": False
+                }),
             }
         }
     
@@ -606,10 +871,10 @@ class QWEN3VL_Video:
     CATEGORY = '🤖QWEN3VL_API'
     
     @classmethod
-    def IS_CHANGED(cls, model, user_prompt, seed, video_path="", video=None):
+    def IS_CHANGED(cls, model, user_prompt, seed, video_path="", video=None, api_key=""):
         return seed
     
-    def qwen3vl_video(self, model, user_prompt, seed, video_path="", video=None):
+    def qwen3vl_video(self, model, user_prompt, seed, video_path="", video=None, api_key=""):
         """调用 QWEN3-VL API 进行视频理解"""
         from openai import OpenAI
         import mimetypes
@@ -691,12 +956,13 @@ class QWEN3VL_Video:
         
         log(f"使用视频文件: {final_path}")
         
-        api_key = get_api_key()
-        if not api_key:
-            return ("❌ 未配置 API Key，请检查 api_key.ini 文件",)
+        # 获取 API Key（优先使用节点输入）
+        final_api_key = get_api_key(api_key)
+        if not final_api_key:
+            return ("❌ 未配置 API Key，请通过节点输入或检查 api_key.ini 文件",)
         
         client = OpenAI(
-            api_key=api_key,
+            api_key=final_api_key,
             base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
         )
         
@@ -747,17 +1013,23 @@ class QWEN3VL_Video:
 
 # 节点映射
 NODE_CLASS_MAPPINGS = {
+    "QWEN_APIKey": QWEN_APIKey,
     "QWEN3VL_Image": QWEN3VL_Image,
     "QWEN3VL_Video": QWEN3VL_Video,
     "QWEN3_Text": QWEN3_Text,
+    "QWEN_TextProcess": QWEN_TextProcess,
+    "QWEN_TextOperation": QWEN_TextOperation,
     "LoadImageFromFolder": LoadImageFromFolder,
     "LoadVideoFromFolder": LoadVideoFromFolder,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
+    "QWEN_APIKey": "QWEN API Key",
     "QWEN3VL_Image": "QWEN3-VL 图像理解",
     "QWEN3VL_Video": "QWEN3-VL 视频理解",
     "QWEN3_Text": "QWEN3 文本生成",
+    "QWEN_TextProcess": "QWEN 文本处理",
+    "QWEN_TextOperation": "QWEN 文本操作",
     "LoadImageFromFolder": "QWEN3-VL 加载图像(文件夹)",
     "LoadVideoFromFolder": "QWEN3-VL 加载视频(文件夹)",
 }
